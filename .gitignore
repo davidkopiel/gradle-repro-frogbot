@@ -1,0 +1,20 @@
+# Gradle
+.gradle/
+**/build/
+
+# IDE
+.idea/
+*.iml
+.settings/
+.classpath
+.project
+*.launch
+
+# OS
+.DS_Store
+
+# JFrog local config (may reference your Artifactory server)
+.jfrog/
+
+# Logs
+*.log

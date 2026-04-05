@@ -1,0 +1,39 @@
+
+apply from: 'projekt.gradle'
+
+allprojects {
+  apply plugin: 'eclipse'
+  apply plugin: 'idea'
+}
+
+subprojects {
+  rootProject.ext.properties.each {
+    key, value -> project.ext.set( key, value )
+  }
+
+  apply from: rootProject.file('projekt.gradle')
+
+  buildscript {
+    repositories {
+      mavenLocal()
+      mavenCentral()
+      gradlePluginPortal()
+      maven { url 'https://repo.spring.io/snapshot' }
+      maven { url 'https://repo.spring.io/milestone' }
+      maven { url 'https://repo.spring.io/release' }
+    }
+  }
+
+  repositories {
+    mavenLocal()
+    if (project.hasProperty('mavenPublicUrl')) {
+      maven { url "${mavenPublicUrl}" }
+    }
+    mavenCentral()
+    maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
+    maven { url 'https://oss.jfrog.org/artifactory/oss-snapshot-local' }
+    maven { url 'https://repo.spring.io/snapshot' }
+    maven { url 'https://repo.spring.io/milestone' }
+    maven { url 'https://repo.spring.io/release' }
+  }
+}

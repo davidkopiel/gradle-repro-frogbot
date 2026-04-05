@@ -1,0 +1,8 @@
+{
+  "library": "spring-mvc",
+  "interfaceOnly": true,
+  "apiPackage": "pl.asseco.ksi.cnn.gen.przelew.api",
+  "modelPackage": "pl.asseco.ksi.cnn.gen.przelew.model",
+  "dateLibrary": "java8",
+  "hideGenerationTimestamp": true
+}

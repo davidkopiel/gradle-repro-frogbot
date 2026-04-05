@@ -1,0 +1,10 @@
+// Shared build metadata (dummy values for local / Frogbot reproduction).
+ext {
+  group = 'pl.asseco.ksi.cnn'
+  version = '1.0.0-SNAPSHOT'
+  metrykaProductName = 'CNN'
+  metrykaProductVersion = '1.0.0'
+  metrykaProductDescription = 'Dummy CNN multi-module (Xray/Frogbot repro)'
+  metrykaSysArch = 'x86_64'
+  metrykaCompanyName = 'Example'
+}

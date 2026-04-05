@@ -1,0 +1,20 @@
+swagger: '2.0'
+info:
+  title: ksi-cnn-ladowanie-wyciagu-api
+  description: Dummy OpenAPI for Gradle/Xray reproduction
+  version: 1.0.0
+host: localhost
+basePath: /api
+schemes:
+  - http
+paths:
+  /status:
+    get:
+      operationId: statusLadowanie
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: string

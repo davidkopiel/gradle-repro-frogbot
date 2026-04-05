@@ -1,0 +1,13 @@
+pluginManagement {
+  repositories {
+    mavenCentral()
+    gradlePluginPortal()
+  }
+}
+
+rootProject.name = 'cnn'
+
+include 'ksi-cnn-integracja'
+include 'ksi-cnn-integracja-z-rg'
+include 'ksi-cnn-ladowanie-wyciagu'
+include 'pakiet-instalacyjny'

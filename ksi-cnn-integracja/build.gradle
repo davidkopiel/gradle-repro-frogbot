@@ -1,0 +1,216 @@
+
+import java.time.LocalDateTime
+
+
+plugins {
+  id 'java'
+  id 'org.springframework.boot' version '2.7.18'
+  id 'io.spring.dependency-management' version '1.0.15.RELEASE'
+  id 'war'
+  id 'org.hidetake.swagger.generator' version '2.19.2'
+}
+
+
+group = project.ext.group
+version = project.ext.version
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+
+configurations {
+  all {
+    exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
+  }
+}
+
+
+dependencies {
+  implementation 'org.springframework.boot:spring-boot-starter-integration'
+  implementation 'org.springframework.integration:spring-integration-file'
+  implementation 'org.springframework.integration:spring-integration-stream'
+  implementation 'org.springframework.integration:spring-integration-groovy'
+  implementation 'org.springframework.integration:spring-integration-jmx'
+
+  implementation 'org.springframework.boot:spring-boot-starter-web'
+  implementation 'org.springframework.boot:spring-boot-starter-log4j2'
+  providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
+  implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+  implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+  implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+  implementation 'org.springframework:spring-oxm'
+
+  implementation 'io.swagger:swagger-annotations:1.5.18'
+  swaggerCodegen 'io.swagger:swagger-codegen-cli:2.4.14'
+  implementation 'org.webjars:webjars-locator:0.32-1'
+  implementation 'org.webjars:swagger-ui:2.2.10-1'
+
+  implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+  implementation 'com.ibm.informix:jdbc:4.50.10.1'
+  implementation 'com.h2database:h2:2.2.224'
+
+  implementation 'org.springframework.boot:spring-boot-starter-mail'
+
+  implementation 'org.freemarker:freemarker:2.3.31'
+
+  compileOnly 'org.projectlombok:lombok:1.18.30'
+  annotationProcessor 'org.projectlombok:lombok:1.18.30'
+  testCompileOnly 'org.projectlombok:lombok:1.18.30'
+  testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+  testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+
+springBoot {
+  mainClass = 'pl.asseco.ksi.cnn.Application'
+
+  buildInfo {
+    properties {
+      additional = [
+        time: LocalDateTime.now(),
+        'metryka.ProductName': project.ext.metrykaProductName,
+        'metryka.ProductVersion': project.ext.metrykaProductVersion,
+        'metryka.ProductDescription': project.ext.metrykaProductDescription,
+        'metryka.SysArch': project.ext.metrykaSysArch,
+        'metryka.CompanyName': project.ext.metrykaCompanyName
+      ]
+    }
+  }
+}
+
+
+processResources {
+  filteringCharset = 'UTF-8'
+  filesMatching([ 'banner.txt', 'application.properties' ]) {
+    expand(project.properties)
+  }
+}
+
+
+tasks.withType(JavaExec).configureEach {
+  standardOutput = System.out
+  standardInput = System.in
+}
+
+
+war {
+  filteringCharset = 'UTF-8'
+  filesMatching('WEB-INF/web.xml') {
+    expand(project.properties)
+  }
+}
+
+
+// Customer build used JAXB/xjc on many XSDs; for a repro we ship a stub package instead.
+swaggerSources {
+  ksiCnnPrzelew {
+    inputFile = file('openapi/ksi-cnn-przelew/2.0/ksi-cnn-przelew-api-spec.yml')
+    code {
+      language = 'spring'
+      configFile = file('openapi/ksi-cnn-przelew/config.json')
+    }
+  }
+  ksiCnnLadowanieWyciagu {
+    inputFile = file('../ksi-cnn-ladowanie-wyciagu/openapi/ksi-cnn-ladowanie-wyciagu/1.0/ksi-cnn-ladowanie-wyciagu-api-spec.yml')
+    code {
+      language = 'java'
+      configFile = file('openapi/ksi-cnn-ladowanie-wyciagu/config.json')
+    }
+  }
+}
+
+compileJava.dependsOn swaggerSources.ksiCnnPrzelew.code
+compileJava.dependsOn swaggerSources.ksiCnnLadowanieWyciagu.code
+eclipseClasspath.dependsOn swaggerSources.ksiCnnPrzelew.code
+eclipseClasspath.dependsOn swaggerSources.ksiCnnLadowanieWyciagu.code
+
+
+task processAdditionalResources(type: Copy) {
+  group = 'Build'
+  description = 'Dodatkowe przetwarzanie zasobów.'
+
+  from('openapi/ksi-cnn-przelew/2.0') {
+    include 'ksi-cnn-przelew-api-spec.yml'
+  }
+  into 'build/additional-resources/static/api-docs/v2'
+}
+
+classes.dependsOn processAdditionalResources
+eclipseClasspath.dependsOn processAdditionalResources
+
+
+eclipse {
+  project {
+    natures += 'org.springframework.ide.eclipse.core.springnature'
+  }
+}
+
+
+sourceSets {
+  main {
+    java {
+      srcDirs = [
+        'src/main/java',
+        "${swaggerSources.ksiCnnPrzelew.code.outputDir}/src/main/java",
+        "${swaggerSources.ksiCnnLadowanieWyciagu.code.outputDir}/src/main/java"
+      ]
+    }
+    output.dir('build/additional-resources', builtBy: 'processAdditionalResources')
+  }
+}
+
+
+task generateEclipseLaunchConfiguration {
+  group = 'IDE'
+  description = 'Generowanie konfiguracji uruchomieniowej Eclipsa dla aplikacji typu Spring Boot.'
+
+  outputs.files "${projectDir}/${project.name}.launch"
+
+  doLast {
+    def stream = new FileOutputStream("${projectDir}/${project.name}.launch")
+    def writer = new OutputStreamWriter(stream, 'utf-8')
+
+    def xml = new groovy.xml.MarkupBuilder(writer)
+    xml.doubleQuotes = true
+    xml.mkp.xmlDeclaration(version: '1.0', encoding: 'utf-8')
+
+    xml.launchConfiguration(type: 'org.springframework.ide.eclipse.boot.launch') {
+      listAttribute(key: 'org.eclipse.debug.core.MAPPED_RESOURCE_PATHS') {
+        listEntry(value: "/${project.name}/src/main/java/${springBoot.mainClass.replace('.', '/')}.java")
+      }
+      listAttribute(key: 'org.eclipse.debug.core.MAPPED_RESOURCE_TYPES') {
+        listEntry(value: '1')
+      }
+      stringAttribute(key: 'org.eclipse.jdt.launching.MAIN_TYPE', value: "${springBoot.mainClass}")
+      stringAttribute(key: 'org.eclipse.jdt.launching.PROJECT_ATTR', value: "${project.name}")
+      stringAttribute(key: 'process_factory_id', value: 'org.springframework.ide.eclipse.boot.launch.process.BootProcessFactory')
+      booleanAttribute(key: 'spring.boot.ansi.console', value: 'true')
+      booleanAttribute(key: 'spring.boot.dash.hidden', value: 'false')
+      booleanAttribute(key: 'spring.boot.debug.enable', value: 'false')
+      booleanAttribute(key: 'spring.boot.fast.startup', value: 'true')
+      booleanAttribute(key: 'spring.boot.jmx.enable', value: 'true')
+      booleanAttribute(key: 'spring.boot.lifecycle.enable', value: 'true')
+      stringAttribute(key: 'spring.boot.lifecycle.termination.timeout', value: '15000')
+      booleanAttribute(key: 'spring.boot.livebean.enable', value: 'true')
+      stringAttribute(key: 'spring.boot.livebean.port', value: '0')
+      stringAttribute(key: 'spring.boot.profile', value: '')
+
+      project.ext.properties.eachWithIndex { key, value, i ->
+        stringAttribute(key: "spring.boot.prop.project.ext.${key}:${i}", value: "1${value}")
+      }
+    }
+
+    writer.close()
+  }
+}
+
+eclipseClasspath.dependsOn generateEclipseLaunchConfiguration
+cleanEclipse.dependsOn cleanGenerateEclipseLaunchConfiguration
+
+
+eclipse.synchronizationTasks generateEclipseLaunchConfiguration, swaggerSources.ksiCnnPrzelew.code,
+  swaggerSources.ksiCnnLadowanieWyciagu.code, processAdditionalResources

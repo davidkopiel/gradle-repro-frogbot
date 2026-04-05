@@ -1,0 +1,147 @@
+
+import java.time.LocalDateTime
+
+
+plugins {
+  id 'java'
+  id 'org.springframework.boot' version '2.7.18'
+  id 'io.spring.dependency-management' version '1.0.15.RELEASE'
+  id 'war'
+}
+
+
+group = project.ext.group
+version = project.ext.version
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+
+configurations {
+  all {
+    exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
+  }
+}
+
+
+dependencies {
+  implementation 'org.springframework.boot:spring-boot-starter-integration'
+  implementation 'org.springframework.integration:spring-integration-groovy'
+  implementation 'org.springframework.integration:spring-integration-jmx'
+  implementation 'org.springframework.integration:spring-integration-jdbc'
+  implementation 'org.springframework.integration:spring-integration-http'
+
+  implementation 'org.springframework.boot:spring-boot-starter-web'
+  implementation 'org.springframework.boot:spring-boot-starter-log4j2'
+
+  providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
+  implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+  implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+  implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+  implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+
+  implementation 'com.ibm.informix:jdbc:4.50.10.1'
+  implementation 'com.h2database:h2:2.2.224'
+
+  implementation 'com.jayway.jsonpath:json-path:2.9.0'
+
+  compileOnly 'org.projectlombok:lombok:1.18.30'
+  annotationProcessor 'org.projectlombok:lombok:1.18.30'
+  testCompileOnly 'org.projectlombok:lombok:1.18.30'
+  testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+  testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+
+springBoot {
+  mainClass = 'pl.asseco.ksi.cnn.Application'
+
+  buildInfo {
+    properties {
+      additional = [
+        time: LocalDateTime.now(),
+        'metryka.ProductName': project.ext.metrykaProductName,
+        'metryka.ProductVersion': project.ext.metrykaProductVersion,
+        'metryka.ProductDescription': project.ext.metrykaProductDescription,
+        'metryka.SysArch': project.ext.metrykaSysArch,
+        'metryka.CompanyName': project.ext.metrykaCompanyName
+      ]
+    }
+  }
+}
+
+
+processResources {
+  filteringCharset = 'UTF-8'
+  filesMatching([ 'banner.txt', 'application.properties' ]) {
+    expand(project.properties)
+  }
+}
+
+
+tasks.withType(JavaExec).configureEach {
+  standardOutput = System.out
+  standardInput = System.in
+}
+
+
+war {
+  filteringCharset = 'UTF-8'
+  filesMatching('WEB-INF/web.xml') {
+    expand(project.properties)
+  }
+}
+
+
+task generateEclipseLaunchConfiguration {
+  group = 'IDE'
+  description = 'Generowanie konfiguracji uruchomieniowej Eclipsa dla aplikacji typu Spring Boot.'
+
+  outputs.files "${projectDir}/${project.name}.launch"
+
+  doLast {
+    def stream = new FileOutputStream("${projectDir}/${project.name}.launch")
+    def writer = new OutputStreamWriter(stream, 'utf-8')
+
+    def xml = new groovy.xml.MarkupBuilder(writer)
+    xml.doubleQuotes = true
+    xml.mkp.xmlDeclaration(version: '1.0', encoding: 'utf-8')
+
+    xml.launchConfiguration(type: 'org.springframework.ide.eclipse.boot.launch') {
+      listAttribute(key: 'org.eclipse.debug.core.MAPPED_RESOURCE_PATHS') {
+        listEntry(value: "/${project.name}/src/main/java/${springBoot.mainClass.replace('.', '/')}.java")
+      }
+      listAttribute(key: 'org.eclipse.debug.core.MAPPED_RESOURCE_TYPES') {
+        listEntry(value: '1')
+      }
+      stringAttribute(key: 'org.eclipse.jdt.launching.MAIN_TYPE', value: "${springBoot.mainClass}")
+      stringAttribute(key: 'org.eclipse.jdt.launching.PROJECT_ATTR', value: "${project.name}")
+      stringAttribute(key: 'process_factory_id', value: 'org.springframework.ide.eclipse.boot.launch.process.BootProcessFactory')
+      booleanAttribute(key: 'spring.boot.ansi.console', value: 'true')
+      booleanAttribute(key: 'spring.boot.dash.hidden', value: 'false')
+      booleanAttribute(key: 'spring.boot.debug.enable', value: 'false')
+      booleanAttribute(key: 'spring.boot.fast.startup', value: 'true')
+      booleanAttribute(key: 'spring.boot.jmx.enable', value: 'true')
+      booleanAttribute(key: 'spring.boot.lifecycle.enable', value: 'true')
+      stringAttribute(key: 'spring.boot.lifecycle.termination.timeout', value: '15000')
+      booleanAttribute(key: 'spring.boot.livebean.enable', value: 'true')
+      stringAttribute(key: 'spring.boot.livebean.port', value: '0')
+      stringAttribute(key: 'spring.boot.profile', value: '')
+
+      project.ext.properties.eachWithIndex { key, value, i ->
+        stringAttribute(key: "spring.boot.prop.project.ext.${key}:${i}", value: "1${value}")
+      }
+    }
+
+    writer.close()
+  }
+}
+
+eclipseClasspath.dependsOn generateEclipseLaunchConfiguration
+cleanEclipse.dependsOn cleanGenerateEclipseLaunchConfiguration
+
+
+eclipse.synchronizationTasks generateEclipseLaunchConfiguration

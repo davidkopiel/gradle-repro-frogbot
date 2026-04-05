@@ -1,0 +1,43 @@
+
+plugins {
+  id 'distribution'
+}
+
+def distName = project.ext.metrykaProductName
+def distVer = project.ext.metrykaProductVersion.replace(' ', '.')
+
+distributions {
+  main {
+    distributionBaseName = distName
+    contents {
+      into("${distName}_${distVer}") {
+        into('tomcat/webapps') {
+          from(project(':ksi-cnn-integracja').tasks.named('war')) {
+            rename { String fn -> fn.replace("-${project(':ksi-cnn-integracja').version}", '') }
+          }
+        }
+        into('tomcat/webapps') {
+          from(project(':ksi-cnn-integracja-z-rg').tasks.named('war')) {
+            rename { String fn -> fn.replace("-${project(':ksi-cnn-integracja-z-rg').version}", '') }
+          }
+        }
+        into('tomcat/webapps') {
+          from(project(':ksi-cnn-ladowanie-wyciagu').tasks.named('bootWar')) {
+            rename { String fn -> fn.replace("-${project(':ksi-cnn-ladowanie-wyciagu').version}", '') }
+          }
+        }
+      }
+    }
+  }
+}
+
+tasks.named('distTar', Tar) {
+  compression = Compression.GZIP
+  archiveClassifier = 'coo_linux_tom'
+  archiveExtension = 'tar.gz'
+  archiveFileName = "${distName}_${distVer}_${archiveClassifier.get()}.${archiveExtension.get()}"
+}
+
+distZip {
+  enabled = false
+}

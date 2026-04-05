@@ -1,0 +1,6 @@
+{
+  "library": "okhttp-gson",
+  "apiPackage": "pl.asseco.ksi.cnn.gen.ladowanie.client.api",
+  "modelPackage": "pl.asseco.ksi.cnn.gen.ladowanie.client.model",
+  "hideGenerationTimestamp": true
+}
